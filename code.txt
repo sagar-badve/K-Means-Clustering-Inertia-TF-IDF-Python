@@ -1,0 +1,104 @@
+#Implementing K-Means Clustering using TF-IDF and Inertia in Python
+#################################################################################################################################################################
+from glob import glob
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.corpus import stopwords 
+import string
+
+files = glob("*.txt")
+names = [fn[:fn.find("_")] for fn in files]
+
+punct1 = set(['•','“', '”', '—'])
+punct2 = set(string.punctuation)
+punct = punct1 | punct2
+
+stop_words = set(stopwords.words('english'))
+digt = set(string.digits)
+dict1 = {}
+
+#Preprocessing Function
+def preprocessing(doc):
+    lower_words = [i.lower() for i in doc]
+    stop_words_removed = " ".join([i for i in lower_words if i not in stop_words])
+    punct_removed = [ch for ch in stop_words_removed if ch not in punct]
+    digt_removed = "".join([i for i in punct_removed if i not in digt])
+    return(digt_removed)
+
+corpus = []   
+for i in range(len(files)):
+    with open(files[i], encoding="utf-8", mode="r") as my_file:
+        content = my_file.read()
+        my_file.close()
+    content1 = content.split()
+    content2 = preprocessing(content1)
+    corpus.append(content2)
+
+#TF-IDF implementation to featurize text data into vectors	
+vectorizer = TfidfVectorizer(max_df=0.9, max_features=24066, min_df=2, analyzer=u'word', stop_words='english')
+matrix = vectorizer.fit_transform(corpus)
+print("n_samples: %d, n_features: %d" % matrix.shape)
+
+df = pd.DataFrame(vectorizer.get_feature_names())
+df.to_excel("total_features.xlsx", "Sheet1")	#save the dataframe in an excel sheet
+
+df = pd.DataFrame(matrix.toarray())
+df.to_excel("filename.xlsx", "Sheet1")		#save the dataframe in an excel sheet
+
+dense_matrix = matrix.todense()
+
+#Plotting Inertia
+from sklearn.cluster import KMeans
+inertia = list()
+delta_inertia = list()
+
+for k in range(1,21):
+    clustering = KMeans(n_clusters = k, n_init  = 10, random_state = 1)
+    clustering.fit(dense_matrix)
+    if inertia:
+        delta_inertia.append(inertia[-1] - clustering.inertia_)
+    inertia.append(clustering.inertia_)
+        
+import matplotlib.pyplot as plt
+plt.figure()
+plt.plot([k for k in range(2,21)], delta_inertia, 'ko-')
+plt.xlabel('Number of clusters')
+plt.ylabel('Rate of change of inertia')
+plt.show()
+
+#K-Means Clustering
+
+km = KMeans(n_clusters=18, random_state=999)
+cluster_solution = km.fit(dense_matrix)
+cluster_membership = km.predict(dense_matrix)
+doc_distance_to_center = km.transform(dense_matrix)
+
+clusters = zip(cluster_membership, names)
+for a, b in clusters:
+    print(a,":", b)
+top_docs = {'docs': names, 'cluster': cluster_membership,\
+            'doc_to_0':doc_distance_to_center[0:,0],\
+            'doc_to_1':doc_distance_to_center[0:,1],\
+            'doc_to_2':doc_distance_to_center[0:,2],\
+            'doc_to_3':doc_distance_to_center[0:,3],\
+            'doc_to_4':doc_distance_to_center[0:,4],\
+            'doc_to_5':doc_distance_to_center[0:,5],\
+            'doc_to_6':doc_distance_to_center[0:,6],\
+            'doc_to_7':doc_distance_to_center[0:,7],\
+            'doc_to_8':doc_distance_to_center[0:,8],\
+            'doc_to_9':doc_distance_to_center[0:,9],\
+            'doc_to_10':doc_distance_to_center[0:,10],\
+            'doc_to_11':doc_distance_to_center[0:,11],\
+            'doc_to_12':doc_distance_to_center[0:,12],\
+            'doc_to_13':doc_distance_to_center[0:,13],\
+            'doc_to_14':doc_distance_to_center[0:,14],\
+            'doc_to_15':doc_distance_to_center[0:,15],\
+            'doc_to_16':doc_distance_to_center[0:,16],\
+            'doc_to_17':doc_distance_to_center[0:,17]
+            }
+
+df = pd.DataFrame(top_docs)
+
+df.to_excel("clusters.xlsx", "Sheet1")	#save the dataframe in an excel sheet
+
+#################################################################################################################################################################
